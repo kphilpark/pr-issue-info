@@ -12,11 +12,13 @@ export async function run() {
     }
 
     const {
+      head_ref,
       head_sha,
       base_ref,
       base_sha,
     } = await pullRequestDetails(token);
 
+    setOutput("head_ref", head_ref);
     setOutput("head_sha", head_sha);
     setOutput("base_ref", base_ref);
     setOutput("base_sha", base_sha);
