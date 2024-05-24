@@ -3,6 +3,11 @@ import { context, getOctokit } from "@actions/github";
 interface PullRequestDetailsResponse {
   repository: {
     pullRequest: {
+      headRef: {
+        target: {
+          oid: string;
+        };
+      };      
       baseRef: {
         name: string;
         target: {
@@ -30,6 +35,7 @@ export async function pullRequestDetails(token: string) {
   const {
     repository: {
       pullRequest: {
+        headRef,
         baseRef,
       },
     },
@@ -38,6 +44,11 @@ export async function pullRequestDetails(token: string) {
       query pullRequestDetails($repo:String!, $owner:String!, $number:Int!) {
         repository(name: $repo, owner: $owner) {
           pullRequest(number: $number) {
+            headRef {
+              target {
+                oid
+              }
+            }
             baseRef {
               name
               target {
@@ -58,6 +69,7 @@ export async function pullRequestDetails(token: string) {
   console.log("baseRef target oid:", baseRef.target.oid);
 
   return {
+    head_sha: headRef.target.oid,
     base_ref: baseRef.name,
     base_sha: baseRef.target.oid,
   };
