@@ -28995,10 +28995,15 @@ async function isPullRequest(token) {
 exports.isPullRequest = isPullRequest;
 async function pullRequestDetails(token) {
     const client = (0, github_1.getOctokit)(token);
-    const { repository: { pullRequest: { baseRef, }, }, } = await client.graphql(`
+    const { repository: { pullRequest: { headRef, baseRef, }, }, } = await client.graphql(`
       query pullRequestDetails($repo:String!, $owner:String!, $number:Int!) {
         repository(name: $repo, owner: $owner) {
           pullRequest(number: $number) {
+            headRef {
+              target {
+                oid
+              }
+            }
             baseRef {
               name
               target {
@@ -29015,6 +29020,7 @@ async function pullRequestDetails(token) {
     console.log("baseRef name:", baseRef.name);
     console.log("baseRef target oid:", baseRef.target.oid);
     return {
+        head_sha: headRef.target.oid,
         base_ref: baseRef.name,
         base_sha: baseRef.target.oid,
     };
@@ -30921,7 +30927,8 @@ async function run() {
         if (!(0, PullRequests_1.isPullRequest)(token)) {
             throw Error("Comment is not on a pull request");
         }
-        const { base_ref, base_sha, } = await (0, PullRequests_1.pullRequestDetails)(token);
+        const { head_sha, base_ref, base_sha, } = await (0, PullRequests_1.pullRequestDetails)(token);
+        (0, core_1.setOutput)("head_sha", head_sha);
         (0, core_1.setOutput)("base_ref", base_ref);
         (0, core_1.setOutput)("base_sha", base_sha);
     }
