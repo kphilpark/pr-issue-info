@@ -1,18 +1,5 @@
 import { context, getOctokit } from "@actions/github";
 
-interface PullRequestDetailsResponse {
-  repository: {
-    pullRequest: {
-      baseRef: {
-        name: string;
-        target: {
-          oid: string;
-        };
-      };
-    };
-  };
-}
-
 export async function isPullRequest(token: string) {
   const client = getOctokit(token);
 
@@ -27,38 +14,25 @@ export async function isPullRequest(token: string) {
 export async function pullRequestDetails(token: string) {
   const client = getOctokit(token);
 
-  const {
-    repository: {
-      pullRequest: {
-        baseRef,
-      },
-    },
-  } = await client.graphql<PullRequestDetailsResponse>(
-    `
-      query pullRequestDetails($repo:String!, $owner:String!, $number:Int!) {
-        repository(name: $repo, owner: $owner) {
-          pullRequest(number: $number) {
-            baseRef {
-              name
-              target {
-                oid
-              }
-            }
-          }
-        }
-      }
-    `,
-    {
-      ...context.repo,
-      number: context.issue.number
-    },
-  );
-  
-  console.log("baseRef name:", baseRef.name);
-  console.log("baseRef target oid:", baseRef.target.oid);
+  const { data: pullRequest } = await client.rest.pulls.get({
+    ...context.repo,
+    pull_number: context.issue.number,
+  });
+
+  const baseRef = pullRequest.base.ref;
+  const baseSha = pullRequest.base.sha;
+  const headRef = pullRequest.head.ref;
+  const headSha = pullRequest.head.sha;
+
+  console.log("baseRef name:", baseRef);
+  console.log("baseRef sha:", baseSha);
+  console.log("headRef name:", headRef);
+  console.log("headRef sha:", headSha);
 
   return {
-    base_ref: baseRef.name,
-    base_sha: baseRef.target.oid,
+    base_ref: baseRef,
+    base_sha: baseSha,
+    head_ref: headRef,
+    head_sha: headSha,
   };
 }
