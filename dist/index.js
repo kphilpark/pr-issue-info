@@ -28995,16 +28995,23 @@ async function isPullRequest(token) {
 exports.isPullRequest = isPullRequest;
 async function pullRequestDetails(token) {
     const client = (0, github_1.getOctokit)(token);
-    const { repository: { pullRequest: { headRef, baseRef, }, }, } = await client.graphql(`
-      query pullRequestDetails($repo:String!, $owner:String!, $number:Int!) {
+    const variables = {
+        repo: github_1.context.repo.repo,
+        owner: github_1.context.repo.owner,
+        number: github_1.context.issue.number,
+    };
+    console.log(variables); // 변수 값 확인
+    const result = await client.graphql(`
+      query pullRequestDetails($repo: String!, $owner: String!, $number: Int!) {
         repository(name: $repo, owner: $owner) {
           pullRequest(number: $number) {
-            headRef {
+            baseRef {
+              name
               target {
                 oid
               }
             }
-            baseRef {
+            headRef {
               name
               target {
                 oid
@@ -29013,19 +29020,74 @@ async function pullRequestDetails(token) {
           }
         }
       }
-    `, {
-        ...github_1.context.repo,
-        number: github_1.context.issue.number
-    });
+    `, variables);
+    console.log(result); // 쿼리 결과 확인
+    const { repository: { pullRequest, } = {}, // 기본값을 빈 객체로 설정
+     } = result;
+    if (!pullRequest) {
+        throw new Error("Pull request not found or unauthorized access.");
+    }
+    const { baseRef, headRef } = pullRequest;
+    if (!baseRef || !headRef) {
+        console.error("BaseRef or HeadRef is null.");
+        console.error("Result:", result);
+        throw new Error("Failed to retrieve pull request details.");
+    }
     console.log("baseRef name:", baseRef.name);
     console.log("baseRef target oid:", baseRef.target.oid);
+    console.log("headRef name:", headRef.name);
+    console.log("headRef target oid:", headRef.target.oid);
     return {
-        head_sha: headRef.target.oid,
         base_ref: baseRef.name,
         base_sha: baseRef.target.oid,
+        head_ref: headRef.name,
+        head_sha: headRef.target.oid,
     };
 }
 exports.pullRequestDetails = pullRequestDetails;
+// export async function pullRequestDetails(token: string) {
+//   const client = getOctokit(token);
+//   const {
+//     repository: {
+//       pullRequest: {
+//         headRef,
+//         baseRef,
+//       },
+//     },
+//   } = await client.graphql<PullRequestDetailsResponse>(
+//     `
+//       query pullRequestDetails($repo:String!, $owner:String!, $number:Int!) {
+//         repository(name: $repo, owner: $owner) {
+//           pullRequest(number: $number) {
+//             headRef {
+//               target {
+//                 oid
+//               }
+//             }
+//             baseRef {
+//               name
+//               target {
+//                 oid
+//               }
+//             }
+//           }
+//         }
+//       }
+//     `,
+//     {
+//       ...context.repo,
+//       number: context.issue.number
+//     },
+//   );
+//   console.log("baseRef name:", baseRef.name);
+//   console.log("baseRef target oid:", baseRef.target.oid);
+//   return {
+//     head_ref: headRef.name,
+//     head_sha: headRef.target.oid,
+//     base_ref: baseRef.name,
+//     base_sha: baseRef.target.oid,
+//   };
+// }
 
 
 /***/ }),
@@ -30927,7 +30989,8 @@ async function run() {
         if (!(0, PullRequests_1.isPullRequest)(token)) {
             throw Error("Comment is not on a pull request");
         }
-        const { head_sha, base_ref, base_sha, } = await (0, PullRequests_1.pullRequestDetails)(token);
+        const { head_ref, head_sha, base_ref, base_sha, } = await (0, PullRequests_1.pullRequestDetails)(token);
+        (0, core_1.setOutput)("head_ref", head_ref);
         (0, core_1.setOutput)("head_sha", head_sha);
         (0, core_1.setOutput)("base_ref", base_ref);
         (0, core_1.setOutput)("base_sha", base_sha);
